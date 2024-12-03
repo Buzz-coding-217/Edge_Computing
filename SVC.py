@@ -5,6 +5,7 @@ from PIL import Image
 from sklearn.model_selection import train_test_split
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
+import time  # Importing time module to track the execution time
 
 # Define paths and parameters
 input_dir = 'dataset/'  # Set this to your dataset directory
@@ -32,40 +33,42 @@ def prepare_data(input_dir, categories):
     return np.asarray(data), np.asarray(labels)
 
 def train_model(x_train, y_train):
-    classifier = SVC()
+    classifier = SVC(kernel='sigmoid', C=1.0)
     classifier.fit(x_train, y_train)
     return classifier
 
 def main():
-    if os.path.exists(model_path) and os.path.exists(performance_metrics_path):
-        # Load the pre-trained model and performance metrics
-        with open(model_path, 'rb') as f:
-            best_estimator = pickle.load(f)
-        with open(performance_metrics_path, 'rb') as f:
-            performance_metrics = pickle.load(f)
-        print("Model and performance metrics loaded from disk.")
-        print("Previous accuracy: {performance_metrics['accuracy']:.2f}%")
-    else:
-        # Prepare data
-        data, labels = prepare_data(input_dir, categories)
-        x_train, x_test, y_train, y_test = train_test_split(
-            data, labels, test_size=0.2, shuffle=True, stratify=labels
-        )
+    # Start the timer
+    start_time = time.time()
 
-        # Train the model
-        best_estimator = train_model(x_train, y_train)
+    # Prepare data
+    data, labels = prepare_data(input_dir, categories)
+    x_train, x_test, y_train, y_test = train_test_split(
+        data, labels, test_size=0.2, shuffle=True, stratify=labels
+    )
 
-        # Test performance
-        y_pred = best_estimator.predict(x_test)
-        score = accuracy_score(y_test, y_pred)
-        print('{score * 100:.2f}% of samples were correctly classified')
+    # Train the model
+    best_estimator = train_model(x_train, y_train)
 
-        # Save the model and performance metrics
-        with open(model_path, 'wb') as f:
-            pickle.dump(best_estimator, f)
-        with open(performance_metrics_path, 'wb') as f:
-            pickle.dump({'accuracy': score * 100}, f)
-        print("Model and performance metrics saved to disk.")
+    # Test performance
+    y_pred = best_estimator.predict(x_test)
+    score = accuracy_score(y_test, y_pred)
+
+    # Saving the model to disk
+    with open(model_path, 'wb') as model_file:
+        pickle.dump(best_estimator, model_file)
+
+    # Saving performance metrics to disk (in this case, accuracy)
+    performance_metrics = {'accuracy': score * 100}
+    with open(performance_metrics_path, 'wb') as metrics_file:
+        pickle.dump(performance_metrics, metrics_file)
+
+    # Calculate time taken and print the results
+    timing = time.time() - start_time  # Elapsed time
+    print("Time taken: {:.2f} seconds".format(timing))
+    print("Validation Accuracy: {:.2f}%".format(score * 100))
+
+    print("Model and performance metrics saved to disk.")
 
 if __name__ == "__main__":
     main()
